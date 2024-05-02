@@ -90,8 +90,7 @@
       <HintPath>..\packages\EasyImGui.1.0.4.1\lib\net48\EasyImGui.dll</HintPath>
     </Reference>
     <Reference Include="RenderSpy, Version=1.7.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\..\Documents\Visual Studio 2022\Projects\RenderSpy\RenderSpy\bin\Debug\ILMerge\RenderSpy.dll</HintPath>
+      <HintPath>..\packages\RenderSpy.1.7.3\lib\net46\RenderSpy.dll</HintPath>
     </Reference>
     <Reference Include="RenderSpy.ImGui, Version=1.0.3.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RenderSpy.ImGui.1.0.3\lib\net48\RenderSpy.ImGui.dll</HintPath>
