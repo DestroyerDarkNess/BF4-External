@@ -8,11 +8,11 @@ Total conversion to C# of [TheKawaiiNeko](https://github.com/TheKawaiiNeko) proj
 * Optimized, although code cleaning and restructuring is needed.
 * This uses the mouse_event WinAPI.
 #### ESP
-* Soldier ESP : 2DBox, ~~BoxFilled~~, Line, ~~HealthBar~~, Distance, Name, VisCheck
+* Soldier ESP : 2DBox, BoxFilled, Line, HealthBar, Distance, Name, VisCheck
 * Vehicle ESP : 2D Box
 #### Misc
 * StreamProof
-* ~~Spectator NameList~~
+* Spectator NameList
 * NoRecoil/Spread
 * DamageHack
 * UnlockAll
