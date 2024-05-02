@@ -1,4 +1,6 @@
-﻿using ExternalSharp.Utils;
+﻿using DearImguiSharp;
+using ExternalSharp.Utils;
+using SharpDX.Mathematics.Interop;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,18 +10,51 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace ExternalSharp.Cheat
 {
     public class Features
     {
-       
 
-        public void AimBot()
+        public static bool AimBot(Vector2 TargetPosition)
+        {
+            switch (ExternalSharp.Cheat.Globals.cfg.AimKeyType)
+            {
+                case 0: // and
+                    if (Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0))
+                        break;
+                    else if (!Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0) || !Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey1))
+                        return false;
+                    else if (!Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0))
+                        return false;
+                    break;
+                case 1: // or
+                    if (Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0))
+                        break;
+                    else if (Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0) || Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey1))
+                        break;
+                    break;
+            }
+
+            Vector2 ScreenMiddle = new Vector2((float)ExternalSharp.Cheat.Globals.GOverlay.Right / 2f, (float)ExternalSharp.Cheat.Globals.GOverlay.Bottom / 2f);
+
+            if (TargetPosition != new Vector2(0f, 0f))
+            {
+                int cX = (int)((ScreenMiddle.X - TargetPosition.X) / ExternalSharp.Cheat.Globals.cfg.Smooth);
+                int cY = (int)((ScreenMiddle.Y - TargetPosition.Y) / ExternalSharp.Cheat.Globals.cfg.Smooth);
+
+                Utils.WinAPI.MoveMouse( -cX, -cY);
+            }
+
+            return true;
+        }
+
+        public void AimBotOld()
         {
             while (ExternalSharp.Cheat.Globals.cfg.Run)
             {
-               
+
                 /*----| SomeChecks |--------------------------------------------------------------------------------*/
                 if (!ExternalSharp.Cheat.Globals.cfg.AimBot)
                 {
@@ -33,7 +68,7 @@ namespace ExternalSharp.Cheat
                 }
 
                 bool check = false;
-             
+
                 switch (ExternalSharp.Cheat.Globals.cfg.AimKeyType)
                 {
                     case 0: // and
@@ -59,20 +94,20 @@ namespace ExternalSharp.Cheat
                     default:
                         break;
                 }
-             
+
                 if (!check)
                     continue;
                 /*--------------------------------------------------------------------------------------------------*/
                 // Overlay Fails checks
                 uint CurrentPid = Utils.WinAPI.ForegroundProcessID();
-                if (CurrentPid != ExternalSharp.Cheat.Globals.Memory.PID )
+                if (CurrentPid != ExternalSharp.Cheat.Globals.Memory.PID)
                 {
                     if (CurrentPid != ExternalSharp.Cheat.Globals.Memory.OverlayPID)
                     {
                         continue;
                     }
                 }
-                   
+
 
                 int aimBone = Utils.WinAPI.AimBoneHead;
                 switch (ExternalSharp.Cheat.Globals.cfg.AimTargetBone)
@@ -94,8 +129,8 @@ namespace ExternalSharp.Cheat
 
                 // TargetPosition
                 Vector2 targetPosition = new Vector2();
-                Player player =  new Player(ExternalSharp.Cheat.Globals.Memory);
-                Player local =  new Player(ExternalSharp.Cheat.Globals.Memory);
+                Player player = new Player(ExternalSharp.Cheat.Globals.Memory);
+                Player local = new Player(ExternalSharp.Cheat.Globals.Memory);
 
                 // Context
                 long clientGameContext = ExternalSharp.Cheat.Globals.Memory.Read<long>((IntPtr)offset.ClientgameContext);
@@ -110,7 +145,7 @@ namespace ExternalSharp.Cheat
                 for (int i = 0; i < 64; i++)
                 {
                     // LocalPlayer Check
-                    if (local.IsDead() && !local.InVehicle())
+                    if (local.IsDead())
                         break;
 
                     // Update Player
@@ -127,66 +162,119 @@ namespace ExternalSharp.Cheat
                         continue;
                     else if (player.ClientPlayer == local.ClientPlayer)
                         continue;
-                    else if (player.IsDead() || player.InVehicle())
+                    else if (player.IsDead())
                         continue;
                     else if (!ExternalSharp.Cheat.Globals.cfg.AimAtTeam && player.Team == local.Team)
                         continue;
-                    else if (ExternalSharp.Cheat.Globals.cfg.CheckPlayerIsVisible == true && !player.IsVisible())
+                    else if (ExternalSharp.Cheat.Globals.cfg.VisCheck == true && !player.IsVisible())
+                        continue;
+                    else if (ExternalSharp.Cheat.Globals.cfg.VehAim == false && player.InVehicle())
                         continue;
 
-                    if(ExternalSharp.Cheat.Globals.cfg.ShowMenu == true)
+                    if (ExternalSharp.Cheat.Globals.cfg.ShowMenu == true)
                         continue;
 
-                    // GetDistance
-                    float distance = ExternalSharp.Cheat.Globals.GameSDK.GetDistance(local.Position, player.Position);
-
-                    // CheckDistance
-                    if (ExternalSharp.Cheat.Globals.cfg.Aim_MaxDistance < distance)
-                        continue;
-
-                    // GetBone Position
-                    Vector2 screenPosition = new Vector2(0f, 0f);
-
-                    // ToDo : Prediction
-
-                    if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(player.GetBone(aimBone), out screenPosition))
-                        continue;
-
-                    // Fov check
-                    fov = Math.Abs((screenMiddle - screenPosition).Length());
-
-                    if (fov < ExternalSharp.Cheat.Globals.cfg.AimFov)
+                    if (ExternalSharp.Cheat.Globals.cfg.VehAim && player.InVehicle())
                     {
-                        switch (ExternalSharp.Cheat.Globals.cfg.AimType)
+
+                        float distance = ExternalSharp.Cheat.Globals.GameSDK.GetDistance(local.Position, player.Position);
+
+
+                        Vector2 VehicleScreen = new Vector2();
+                        if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(player.Position, out VehicleScreen))
+                            continue;
+
+                        if (VehicleScreen != new Vector2(0f, 0f))
                         {
-                            case 0:
+                            Vector4 pEntityMax = player.VehicleAABB.Max;
+                            Vector4 pEntityMin = player.VehicleAABB.Min;
+                            Vector3 Top = player.Position + new Vector3(pEntityMax.X, pEntityMax.Y, pEntityMax.Z);
+                            Vector3 Btm = player.Position + new Vector3(pEntityMin.X, pEntityMin.Y, pEntityMin.Z);
+
+                            Vector2 BoxTop, BoxBtm;
+                            if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(Top, out BoxTop) || !ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(Btm, out BoxBtm))
+                                continue;
+                            else if (BoxTop == new Vector2(0f, 0f) || BoxBtm == new Vector2(0f, 0f))
+                                continue;
+
+                            float BoxMiddle = VehicleScreen.X;
+                            float Height = BoxBtm.Y - BoxTop.Y;
+                            float Width = Height / 4f;
+
+                         //   DrawBox((int)(VehicleScreen.X - Width), (int)VehicleScreen.Y, (int)(Height), (int)(-Height), VehColor);
+
+
+                            // Fov check
+                            fov = Math.Abs((screenMiddle - VehicleScreen).Length());
+
+                            if (fov < ExternalSharp.Cheat.Globals.cfg.AimFov)
+                            {
                                 if (minFov == 0f || minFov > fov)
                                 {
                                     minFov = fov;
-                                    targetPosition = screenPosition;
+                                    targetPosition = new Vector2((VehicleScreen.X - Width), (int)(VehicleScreen.Y -( Height /2)));
                                 }
-                                break;
-                            case 1:
-                                if (minDistance == 0f || minDistance > distance)
-                                {
-                                    minDistance = distance;
-                                    targetPosition = screenPosition;
-                                }
-                                break;
-                            default:
-                                break;
+                            }
+                        }
+
+                        continue;
+                    }
+                    else 
+                    {
+                        // GetDistance
+                        float distance = ExternalSharp.Cheat.Globals.GameSDK.GetDistance(local.Position, player.Position);
+
+                        // CheckDistance
+                        if (ExternalSharp.Cheat.Globals.cfg.Aim_MaxDistance < distance)
+                            continue;
+
+                        // GetBone Position
+                        Vector2 screenPosition = new Vector2(0f, 0f);
+
+                        // ToDo : Prediction
+
+                        if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(player.GetBone(aimBone), out screenPosition))
+                            continue;
+
+                        // Fov check
+                        fov = Math.Abs((screenMiddle - screenPosition).Length());
+
+                        if (fov < ExternalSharp.Cheat.Globals.cfg.AimFov)
+                        {
+                            switch (ExternalSharp.Cheat.Globals.cfg.AimType)
+                            {
+                                case 0:
+                                    if (minFov == 0f || minFov > fov)
+                                    {
+                                        minFov = fov;
+                                        targetPosition = screenPosition;
+                                    }
+                                    break;
+                                case 1:
+                                    if (minDistance == 0f || minDistance > distance)
+                                    {
+                                        minDistance = distance;
+                                        targetPosition = screenPosition;
+                                    }
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     }
+
+                   
                 }
 
                 // AimBotŽÀs?
                 if (targetPosition != new Vector2(0f, 0f))
                 {
+
                     int deltaX = (int)((screenMiddle.X - targetPosition.X) / ExternalSharp.Cheat.Globals.cfg.Smooth);
                     int deltaY = (int)((screenMiddle.Y - targetPosition.Y) / ExternalSharp.Cheat.Globals.cfg.Smooth);
 
                     Utils.WinAPI.MoveMouse(-deltaX, -deltaY);
-                }
+                } 
             }
         }
 

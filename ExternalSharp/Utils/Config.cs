@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -22,10 +23,11 @@ namespace ExternalSharp.Utils
         // Status
         public bool Run;
         public bool ShowMenu;
+        public bool SpectList;
         public int CurrentBPS;
 
         // AimBot
-        public bool CheckPlayerIsVisible;
+        public bool VehAim;
         public bool CheckPlayerIsSpectator;
         public bool AimBot;
         public bool AimAtTeam;
@@ -64,12 +66,15 @@ namespace ExternalSharp.Utils
         public int RainbowRate;
 
         // Overlay
+        public float Opacity;
         public bool Framerate;
         public int FramerateType;
+        public int MSAA_Level;
 
         // Misc
         public bool UnlockAll;
         public bool SwayModify;
+        public bool BlurOnGUI;
         public float ModVal;
         public bool DamageHack;
         public int ModBPS;
@@ -91,22 +96,23 @@ namespace ExternalSharp.Utils
             // Set default values
             config.Run = false;
             config.ShowMenu = false;
+            config.SpectList = true;
             config.CurrentBPS = 0;
 
             config.CheckPlayerIsSpectator = false;
-            config.CheckPlayerIsVisible = true;
+            config.VehAim = true;
             config.AimBot = true;
             config.AimAtTeam = false;
             config.VisCheck = true;
             config.NoSway = true;
-            config.AimTargetBone = 1;
+            config.AimTargetBone = 0;
             config.DrawFov = true;
             config.RainbowFov = true;
             config.FovFilled = true;
             config.AimFov = 150f;
-            config.Smooth = 20;
+            config.Smooth = 10;
             config.Aim_MaxDistance = 150f;
-            config.AimType = 0;
+            config.AimType = 1;
             config.AimKeyType = 1;
 
             config.CheckSpectator = false;
@@ -129,7 +135,9 @@ namespace ExternalSharp.Utils
             config.CrosshairType = 0;
             config.RainbowRate = 25;
 
+            config.Opacity = 57f;
             config.FramerateType = 1;
+            config.MSAA_Level = 0;
 
             config.UnlockAll = true;
             config.SwayModify = true;

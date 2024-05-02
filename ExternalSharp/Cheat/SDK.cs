@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace ExternalSharp.Cheat
@@ -12,12 +13,31 @@ namespace ExternalSharp.Cheat
             Memory = mem;
         }
 
-        public string ReadPlayerName(Player player)
+        public int ScreenWidth = 0;
+        public int ScreenHeight = 0;
+        public SharpDX.Matrix view_x_projection = new SharpDX.Matrix();
+
+        public bool UpdateW2SData()
         {
-            string pName = string.Empty;
-            Memory.ReadString((IntPtr)(player.ClientPlayer + offset.PlayerName), out pName, 128);
-            return pName;
+            long GameRenderer = Memory.Read<long>((IntPtr)offset.GameRenderer);
+            long RenderView = Memory.Read<long>((IntPtr)(GameRenderer + 0x60));
+
+            if (RenderView == 0)
+                return false;
+
+            long DXRenderer = Memory.Read<long>((IntPtr)offset.DxRenderer);
+            long m_pScreen = Memory.Read<long>((IntPtr)(DXRenderer + 0x38));
+
+            if (m_pScreen == 0)
+                return false;
+
+            view_x_projection = Memory.Read<SharpDX.Matrix>((IntPtr)(RenderView + 0x420));
+            ScreenWidth = Memory.Read<int>((IntPtr)(m_pScreen + 0x58));
+            ScreenHeight = Memory.Read<int>((IntPtr)(m_pScreen + 0x5C));
+
+            return true;
         }
+
 
         public float GetDistance(Vector3 value1, Vector3 value2)
         {
@@ -32,7 +52,7 @@ namespace ExternalSharp.Cheat
         {
             long GameRenderer = Memory.Read<long>((IntPtr)offset.GameRenderer);
             long RenderView = Memory.Read<long>((IntPtr)(GameRenderer + 0x60));
-
+          
             if (RenderView == 0)
             {
                 ScreenPos = Vector2.Zero;
@@ -41,7 +61,7 @@ namespace ExternalSharp.Cheat
 
             ulong DXRenderer = Memory.Read<ulong>((IntPtr)offset.DxRenderer);
             ulong m_pScreen = Memory.Read<ulong>((IntPtr)(DXRenderer + 0x38));
-
+           
             if (m_pScreen == 0)
             {
                 ScreenPos = Vector2.Zero;
@@ -57,13 +77,13 @@ namespace ExternalSharp.Cheat
             float cY = ScreenHeight * 0.5f;
 
             float w = view_x_projection[0, 3] * WorldPos.X + view_x_projection[1, 3] * WorldPos.Y + view_x_projection[2, 3] * WorldPos.Z + view_x_projection[3, 3];
-
+          
             if (w < 0.65f)
             {
                 ScreenPos = Vector2.Zero;
                 return false;
             }
-
+          
             float x = view_x_projection[0, 0] * WorldPos.X + view_x_projection[1, 0] * WorldPos.Y + view_x_projection[2, 0] * WorldPos.Z + view_x_projection[3, 0];
             float y = view_x_projection[0, 1] * WorldPos.X + view_x_projection[1, 1] * WorldPos.Y + view_x_projection[2, 1] * WorldPos.Z + view_x_projection[3, 1];
 
@@ -308,6 +328,7 @@ namespace ExternalSharp.Cheat
         public const long Spectator = 0x13C9;
     }
 
+
     public struct AxisAlignedBox
     {
         public Vector4 Min;
@@ -328,12 +349,14 @@ namespace ExternalSharp.Cheat
         public long ClientSoldier;
         public long ClientVehicle;
 
+        public string Name;
         public int Team;
         public HealthComponent TmpComponent;
-        public HealthComponent HealthBase;
+        public HealthComponent HealthBase = new HealthComponent();
         public Vector3 Position;
         public bool Occlude;
         public int Pose;
+        public long pQuat;
 
         public SharpDX.Matrix VehicleTranfsorm;
         public AxisAlignedBox SoldierAABB;
@@ -376,6 +399,19 @@ namespace ExternalSharp.Cheat
             return Memory.Read<Vector3>((IntPtr)(TmpPosition + 0x50));
         }
 
+
+        private string ReadPlayerName()
+        {
+            string pName = string.Empty;
+            Memory.ReadString((IntPtr)(ClientPlayer + offset.PlayerName), out pName, 128);
+            return pName;
+        }
+
+        private long GetQuat()
+        {
+            return Memory.Read<long>((IntPtr)(Memory.Read<long>((IntPtr)(ClientSoldier + 0x580)) + 0xB0));
+        }
+
         public void Update()
         {
             ClientSoldier = Memory.Read<long>((IntPtr)(ClientPlayer + offset.ClientSoldier));
@@ -385,7 +421,13 @@ namespace ExternalSharp.Cheat
             Team = Memory.Read<int>((IntPtr)(ClientPlayer + offset.PlayerTeam));
             // Health
             long TmpHealthComponent = Memory.Read<long>((IntPtr)(ClientSoldier + 0x140));
-            TmpComponent = Memory.Read<HealthComponent>((IntPtr)(TmpHealthComponent));
+           // TmpComponent = Memory.Read<HealthComponent>((IntPtr)(TmpHealthComponent));
+
+            HealthBase.m_Health = Memory.Read<float>((IntPtr)(TmpHealthComponent + 0x0020));
+            HealthBase.m_MaxHealth = Memory.Read<float>((IntPtr)(TmpHealthComponent + 0x0024));
+            HealthBase.m_VehicleHealth = Memory.Read<float>((IntPtr)(TmpHealthComponent + 0x0038));
+            HealthBase.m_MaxVehicleHealth = Memory.Read<float>((IntPtr)(TmpHealthComponent + 0x0042));
+
             // Position
             if (InVehicle()) // Vehicle
             {
@@ -409,6 +451,8 @@ namespace ExternalSharp.Cheat
             // Visible
             Occlude = Memory.Read<bool>((IntPtr)(ClientSoldier + 0x5B1));
             Pose = Memory.Read<int>((IntPtr)(ClientSoldier + 0x4F0));
+            pQuat = GetQuat();
+            Name = ReadPlayerName();
         }
 
         public AxisAlignedBox GetAABB()
@@ -438,19 +482,9 @@ namespace ExternalSharp.Cheat
 
         public Vector3 GetBone(int bone_id)
         {
-            Vector3 outVec = Vector3.Zero;
-            long ragdoll_component = Memory.Read<long>((IntPtr)(ClientSoldier + 0x580));
-            if (ragdoll_component == 0)
-                return Vector3.Zero;
-
-            long quat = Memory.Read<long>((IntPtr)(ragdoll_component + 0xB0));
-            if (quat == 0)
-                return Vector3.Zero;
-
-            return Memory.Read<Vector3>((IntPtr)(quat + bone_id * 0x20));
+            return Memory.Read<Vector3>((IntPtr)(pQuat + bone_id * 0x20));
         }
 
-      
     }
 
 
