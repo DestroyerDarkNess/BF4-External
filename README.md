@@ -29,3 +29,12 @@ A. BF4 anti-cheat performs Sig-based program detection, so rewrite the code or u
 ## Preview
 ![Captura de pantalla 2024-04-14 194349](https://github.com/DestroyerDarkNess/BF4-External/assets/32405118/4e945efa-b060-439b-8ab4-925170de89f6)
 ![Captura de pantalla 2024-04-16 210240](https://github.com/DestroyerDarkNess/BF4-External/assets/32405118/c736599d-c9eb-4342-b6c1-5a841391d356)
+
+<center>
+<h2> 🛠️ Resources </h2>
+</center>
+
+- [EasyImGui](https://github.com/DestroyerDarkNess/EasyImGui) - Perfect UI tools for WinForms C# and VB.NET app development.
+- [RenderSpy.Imgui](https://www.nuget.org/packages/RenderSpy.ImGui) - NuGet package that includes [DearImguiSharp](https://github.com/Sewer56/DearImguiSharp) for the .NET Framework.
+- [RenderSpy](https://github.com/DestroyerDarkNess/RenderSpy) - Universal graphical and input hook for a D3D9-D3D12, OpenGL and Vulkan based games.
+- [Themer](https://github.com/arshx86/Themer) - Various blur effects for WinForms.
