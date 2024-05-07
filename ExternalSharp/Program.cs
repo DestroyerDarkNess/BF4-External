@@ -32,7 +32,9 @@ namespace ExternalSharp
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-          
+
+            Console.WriteLine("Loading... Please Wait!");
+
             Globals.Memory.OnMemReady += OnMemoryResut;
             Globals.Memory.Init();
         }
@@ -112,6 +114,7 @@ namespace ExternalSharp
                                 }
 
                             });
+
                             //KeysThread.Priority = ThreadPriority.Normal;
                             KeysThread.SetApartmentState(ApartmentState.STA);
                             KeysThread.Start();
@@ -189,7 +192,7 @@ namespace ExternalSharp
                                 Globals.GOverlay.Opacity = ((double)Math.Round(Globals.cfg.Opacity) / 100); 
                             }
 
-                            if(FreeCMD == false) { FreeCMD = true; FreeConsole(); }
+                            if (FreeCMD == false) { FreeCMD = true; FreeConsole(); }
 
                             return true;
 

@@ -411,9 +411,9 @@ namespace ExternalSharp.Cheat
 
                   RawColorBGRA VehColor =  pEntity.Team == pLocal.Team ? Utils.Extensions.ToSharpDXColor(ESP_VehTeam) : Utils.Extensions.ToSharpDXColor(ESP_VehNormal);
 
-                    //Matrix Object Bug :(
-                  //  DrawAABB(pEntity.VehicleAABB, pEntity.VehicleTranfsorm, SharpDX.Color.Red);
-
+                    // Matrix Object Bug :(
+                    // DrawAABB(pEntity.VehicleAABB, pEntity.VehicleTranfsorm, SharpDX.Color.Red);
+                  
                     if (ExternalSharp.Cheat.Globals.cfg.ESP_Distance)
                     {
                         // float to Text
@@ -859,6 +859,45 @@ namespace ExternalSharp.Cheat
                     ImGui.Spacing();
 
 
+                    string text1 = ((Keys)Globals.cfg.AimKey0).ToString();
+                    string text2 = ((Keys)Globals.cfg.AimKey1).ToString();
+
+                    if (Globals.cfg.KeyBinding)
+                    {
+                        switch (Globals.cfg.BindingID)
+                        {
+                            case 1:
+                                text1 = "< Press Any Key >";
+                                break;
+                            case 2:
+                                text2 = "< Press Any Key >";
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    if (ImGui.Button(text1, new Utils.ImVec2(215f, 50f)))
+                    {
+                        Globals.cfg.KeyBinding = true;
+                        Globals.cfg.BindingID = 1;
+                        new Thread(() => { this.KeyBinder(ref Globals.cfg.AimKey0); }).Start();
+                    }
+
+                    ImGui.PushItemWidth(215f);
+
+                    ImGui.ComboStr_arr("##KeyType", ref Globals.cfg.AimKeyType, AimKeyTypeList, AimKeyTypeList.Count(), AimKeyTypeList.Count());
+
+                    ImGui.PopItemWidth();
+
+                    if (ImGui.Button(text2, new Utils.ImVec2(215f, 50f)))
+                    {
+                        Globals.cfg.KeyBinding = true;
+                        Globals.cfg.BindingID = 2;
+                        new Thread(() => { this.KeyBinder(ref Globals.cfg.AimKey1); }).Start();
+                    }
+
+
                     ImGui.EndChild();
                     /*---------------*/
 
@@ -1106,6 +1145,50 @@ namespace ExternalSharp.Cheat
             ImGui.End();
         }
 
+        void KeyBinder(ref Keys target_key)
+        {
+            // Flag for key binding
+            bool flag = false;
+
+            // Key binding process
+            while (true)
+            {
+
+                for (int i = 0; i < 0x87; i++)
+                {
+                    if (i == (int)Keys.LWin || i == (int)Keys.RWin)
+                        continue;
+
+                    if (Utils.Config.IsKeyDown((Keys)i))
+                    {
+                        if (i == (int)Keys.Escape)
+                        {
+                            target_key = (Keys)0;
+                            flag = true;
+                        }
+                        else
+                        {
+                            target_key = (Keys)i;
+                            flag = true;
+                        }
+
+                        break;
+                    }
+                }
+
+                if (flag)
+                    break;
+            }
+
+            // Check and update AimKey1 if AimKey0 is the same
+            if (Globals.cfg.AimKey0 == Globals.cfg.AimKey1)
+                Globals.cfg.AimKey1 = 0;
+
+            Globals.cfg.KeyBinding = false;
+            Globals.cfg.BindingID = 0;
+        }
+
+
         public SharpDX.Direct3D9.PresentParameters presentParams = new SharpDX.Direct3D9.PresentParameters()
         {
             Windowed = true,
@@ -1136,13 +1219,16 @@ namespace ExternalSharp.Cheat
                         presentParams.MultiSampleQuality = MSAA_Level;
                         presentParams.MultiSampleType = (MultisampleType)MSAA_Level;
                         Globals.GOverlay.Reset();
+
+                      if(Program.FreeCMD == false)
                         Console.WriteLine("Current MSAA Level : x" + Content);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("MSAA " + MSAA[Level] + " Error: " + ex.Message);
+                if (Program.FreeCMD == false)
+                    Console.WriteLine("MSAA " + MSAA[Level] + " Error: " + ex.Message);
             }
             new Thread(() => { System.Threading.Thread.Sleep(3000); RuntimeMSAA = false; }).Start();
            
@@ -1171,7 +1257,8 @@ namespace ExternalSharp.Cheat
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Framerate Error: " + ex.Message);
+                if (Program.FreeCMD == false)
+                    Console.WriteLine("Framerate Error: " + ex.Message);
             }
            
         }
