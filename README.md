@@ -27,8 +27,11 @@ Q. Detect?
 A. BF4 anti-cheat performs Sig-based program detection, so rewrite the code or use some Dotnet protector/packer, such as ConfuserEx / VMProtect or Enigma Protector to bypass Sig-based detection。  
 
 ## Preview
-![Captura de pantalla 2024-04-14 194349](https://github.com/DestroyerDarkNess/BF4-External/assets/32405118/4e945efa-b060-439b-8ab4-925170de89f6)
-![Captura de pantalla 2024-04-16 210240](https://github.com/DestroyerDarkNess/BF4-External/assets/32405118/c736599d-c9eb-4342-b6c1-5a841391d356)
+![image (1)](https://github.com/DestroyerDarkNess/BF4-External/assets/32405118/f8c7a37f-9101-4e8e-90d3-672dd62c96eb)
+
+![image](https://github.com/DestroyerDarkNess/BF4-External/assets/32405118/8016790a-a92e-4cfe-b029-a52020984c75)
+
+![ima2ge](https://github.com/DestroyerDarkNess/BF4-External/assets/32405118/551cb3d4-46ab-4d29-95ff-1f8145c3dac3)
 
 <center>
 <h2> 🛠️ Resources </h2>
