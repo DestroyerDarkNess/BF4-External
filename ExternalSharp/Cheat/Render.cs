@@ -1,4 +1,5 @@
-﻿using DearImguiSharp;
+﻿using Cheat;
+using DearImguiSharp;
 using GameOverlay.Windows;
 using SharpDX.Direct2D1;
 using SharpDX.Direct3D9;
@@ -15,7 +16,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using System.Xml.Linq;
+using static OpenGL.Gl;
 using static System.Net.Mime.MediaTypeNames;
+
 
 namespace ExternalSharp.Cheat
 {
@@ -34,6 +37,50 @@ namespace ExternalSharp.Cheat
         private System.Drawing.Color ESP_VehNormal = System.Drawing.Color.DarkRed;
 
         public List<string> NameList = new List<string>();
+
+
+        public void DrawFilledBoxDirect(int x, int y, int width, int height, RawColorBGRA color)
+        {
+            try
+            {
+                var device = Globals.GOverlay.D3DDevice; // Obtener el dispositivo Direct3D
+
+                // Convertir RawColorBGRA a ARGB
+                int argbColor = RawColorToArgb(color);
+
+                // Definir los cuatro vértices del rectángulo (dos triángulos conectados por TriangleStrip)
+                CustomVertex[] vertices = new CustomVertex[4]
+                {
+            new CustomVertex(new SharpDX.Vector4(x, y, 0.5f, 1.0f), argbColor),                 // Top-left
+            new CustomVertex(new SharpDX.Vector4(x + width, y, 0.5f, 1.0f), argbColor),         // Top-right
+            new CustomVertex(new SharpDX.Vector4(x, y + height, 0.5f, 1.0f), argbColor),        // Bottom-left
+            new CustomVertex(new SharpDX.Vector4(x + width, y + height, 0.5f, 1.0f), argbColor) // Bottom-right
+                };
+
+                // Establecer el formato del vértice
+                device.VertexFormat = CustomVertex.Format;
+
+                // Desactivar el buffer de profundidad si no lo necesitas (para que el rectángulo siempre esté visible)
+                device.SetRenderState(RenderState.ZEnable, false);
+
+                // Dibujar el rectángulo usando TriangleStrip
+                device.DrawUserPrimitives(PrimitiveType.TriangleStrip, 2, vertices);
+
+                // Volver a habilitar el buffer de profundidad si es necesario
+                device.SetRenderState(RenderState.ZEnable, true);
+            }
+            catch
+            {
+                // Gestionar la excepción si algo falla
+            }
+        }
+
+
+        public int RawColorToArgb(RawColorBGRA color)
+        {
+            return (color.A << 24) | (color.R << 16) | (color.G << 8) | color.B;
+        }
+
 
         public void DrawLine(ImVec2 a, ImVec2 b, RawColorBGRA color, float width)
         {
@@ -64,8 +111,6 @@ namespace ExternalSharp.Cheat
             //  ImGui.GetWindowDrawList().AddText(ImGui.GetFont(), ImGui.GetFontSize(), pos, color, text_begin, text_end, wrap_width, cpu_fine_clip_rect);
         }
 
-        
-
         void String(ImVec2 pos, System.Drawing.Color color, string text)
         {
             Text(pos, color, text, text + text.Length, 200, new ImVec4());
@@ -86,7 +131,7 @@ namespace ExternalSharp.Cheat
             // Rellenar el área interior de la caja
             for (int xPos = x + 1; xPos < x + w; xPos++)
             {
-                DrawLine(new ImVec2() { X = xPos, Y = y -1 }, new ImVec2() { X = xPos, Y = y + h +1 }, fillColor, 1.0f);
+                DrawLine(new ImVec2() { X = xPos, Y = y - 1 }, new ImVec2() { X = xPos, Y = y + h + 1 }, fillColor, 1.0f);
             }
         }
 
@@ -245,40 +290,46 @@ namespace ExternalSharp.Cheat
     }, color);
         }
 
+        //public void DrawBox(int x, int y, int width, int height, RawColorBGRA color)
+        //{
+        //    DrawFilledBoxDirect(x, y, width, 1, color);          // Top side
+        //    DrawFilledBoxDirect(x, y + height - 1, width, 1, color); // Bottom side
+        //    DrawFilledBoxDirect(x, y, 1, height, color);         // Left side
+        //    DrawFilledBoxDirect(x + width - 1, y, 1, height, color); // Right side
+        //}
 
-        void DrawBox(int x, int y, int w, int h, RawColorBGRA color)
+        public void DrawBoxwithoutSides(int x, int y, int width, int height, RawColorBGRA color)
         {
-            //DrawLine(new ImVec2() {X= x,Y= y }, new ImVec2() { X= x + w,Y= y }, color, 1.0f);
-            //DrawLine(new ImVec2() {X= x, Y= y }, new ImVec2() {X= x,Y= y + h }, color, 1.0f);
-            //DrawLine(new ImVec2() {X= x + w,Y= y }, new ImVec2() {X= x + w,Y= y + h }, color, 1.0f);
-            //DrawLine(new ImVec2() {X= x,Y= y + h }, new ImVec2() {X= x + w,Y= y + h }, color, 1.0f);
+            // Adjust the coordinates slightly to ensure all edges are drawn correctly
+            int adjustedWidth = width - 1;  // Adjust width to ensure right side is drawn
+            int adjustedHeight = height - 1; // Adjust height to ensure bottom side is drawn
 
+            // Draw the top and bottom edges
+            DrawFilledBoxDirect(x, y, width, 1, color);            // Top side
+            DrawFilledBoxDirect(x, y + adjustedHeight, width, 1, color); // Bottom side
 
-            if (Globals.GOverlay.LineSurfaces.Count != 0)
+            // Draw the left and right edges
+            DrawFilledBoxDirect(x, y, 1, height, color);           // Left side
+            DrawFilledBoxDirect(x + adjustedWidth, y, 1, height, color);  // Right side
+        }
+
+        public void DrawBox(int x, int y, int w, int h, RawColorBGRA color)
+        {
+            if (Globals.GOverlay.LineSurfaces.Count == 0)
+                return;
+
+            // Definir los vértices del rectángulo (en el orden en que deben conectarse)
+            RawVector2[] vertices = new RawVector2[]
             {
-                Globals.GOverlay.LineSurfaces[0].Draw(new[] {
-            new RawVector2(x, y),
-            new RawVector2(x + w,  y),
-            }, color);
+        new RawVector2(x, y),               // Top-left
+        new RawVector2(x + w, y),           // Top-right
+        new RawVector2(x + w, y + h),       // Bottom-right
+        new RawVector2(x, y + h),           // Bottom-left
+        new RawVector2(x, y)                // Vuelve al Top-left para cerrar el rectángulo
+            };
 
-                Globals.GOverlay.LineSurfaces[0].Draw(new[] {
-            new RawVector2(x, y),
-            new RawVector2(x ,  y + h),
-            }, color);
-
-
-                Globals.GOverlay.LineSurfaces[0].Draw(new[] {
-            new RawVector2(x + w, y),
-            new RawVector2(x + w , y + h ),
-            }, color);
-
-                Globals.GOverlay.LineSurfaces[0].Draw(new[] {
-            new RawVector2(x , y + h),
-            new RawVector2(x + w , y + h),
-            }, color);
-
-            }
-
+            // Dibuja el rectángulo como un solo batch de líneas conectadas
+            Globals.GOverlay.LineSurfaces[0].Draw(vertices, color);
         }
 
 
@@ -340,13 +391,213 @@ namespace ExternalSharp.Cheat
             
         }
 
+        // Additional rendering logic methods (DrawPlayerBox, RenderPlayerDetails, etc.) go here
+
+        public void AimBotTarget(Player player)
+        {
+
+            uint CurrentPid = Utils.WinAPI.ForegroundProcessID();
+            if (CurrentPid != ExternalSharp.Cheat.Globals.Memory.PID)
+            {
+                if (CurrentPid != ExternalSharp.Cheat.Globals.Memory.OverlayPID)
+                {
+                    return;
+                }
+            }
+
+            bool check = false;
+
+            switch (ExternalSharp.Cheat.Globals.cfg.AimKeyType)
+            {
+                case 0: // and
+                    if (ExternalSharp.Cheat.Globals.cfg.AimKey1 != 0)
+                        if (!Utils.Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0) || !Utils.Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey1))
+                            return;
+                        else
+                            if (!Utils.Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0))
+                            return;
+
+                    check = true;
+                    break;
+                case 1: // or
+                    if (ExternalSharp.Cheat.Globals.cfg.AimKey1 != 0)
+                        if (Utils.Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0) || Utils.Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey1))
+                            check = true;
+                        else
+                            if (!Utils.Config.IsKeyDown(ExternalSharp.Cheat.Globals.cfg.AimKey0))
+                            return;
+
+                    check = true;
+                    break;
+                default:
+                    break;
+            }
+
+            if (!check)
+                return;
+
+            int aimBone = Utils.WinAPI.AimBoneHead;
+            switch (ExternalSharp.Cheat.Globals.cfg.AimTargetBone)
+            {
+                case 0:
+                    aimBone = Utils.WinAPI.AimBoneHead;
+                    break;
+                case 1:
+                    aimBone = Utils.WinAPI.AimBoneChest;
+                    break;
+                default:
+                    break;
+            }
+
+            float fov = 0f;
+            float minFov = 0f;
+            float minDistance = 0f;
+            Vector2 screenMiddle = new Vector2(ExternalSharp.Cheat.Globals.GOverlay.Right / 2f, ExternalSharp.Cheat.Globals.GOverlay.Bottom / 2f);
+
+            // TargetPosition
+            Vector2 targetPosition = new Vector2();
+            Player local = new Player(ExternalSharp.Cheat.Globals.Memory);
+
+            // Context
+            long clientGameContext = ExternalSharp.Cheat.Globals.Memory.Read<long>((IntPtr)offset.ClientgameContext);
+            long playerManager = ExternalSharp.Cheat.Globals.Memory.Read<long>((IntPtr)(clientGameContext + offset.PlayerManager));
+            long playerEntity = ExternalSharp.Cheat.Globals.Memory.Read<long>((IntPtr)(playerManager + offset.ClientPlayer));
+
+            // LocalPlayer
+            local.ClientPlayer = ExternalSharp.Cheat.Globals.Memory.Read<long>((IntPtr)(playerManager + offset.LocalPlayer));
+            local.Update();
+
+            // LocalPlayer Check
+            if (local.IsDead())
+                return;
+
+            // Spectaror Warning
+            //if (ExternalSharp.Cheat.Globals.cfg.CheckPlayerIsSpectator && player.IsSpectator())
+            //    continue;
+
+            // Invalid Player
+            if (player.ClientPlayer == 0)
+                return;
+            else if (player.ClientPlayer == local.ClientPlayer)
+                return;
+            else if (player.IsDead())
+                return;
+            else if (!ExternalSharp.Cheat.Globals.cfg.AimAtTeam && player.Team == local.Team)
+                return;
+            else if (ExternalSharp.Cheat.Globals.cfg.VisCheck == true && !player.IsVisible())
+                return;
+            else if (ExternalSharp.Cheat.Globals.cfg.VehAim == false && player.InVehicle())
+                return;
+
+            if (ExternalSharp.Cheat.Globals.cfg.ShowMenu == true)
+                return;
+
+            if (ExternalSharp.Cheat.Globals.cfg.VehAim && player.InVehicle())
+            {
+
+                float distance = ExternalSharp.Cheat.Globals.GameSDK.GetDistance(local.Position, player.Position);
+
+
+                Vector2 VehicleScreen = new Vector2();
+                if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(player.Position, out VehicleScreen))
+                    return;
+
+                if (VehicleScreen != new Vector2(0f, 0f))
+                {
+                    Vector4 pEntityMax = player.VehicleAABB.Max;
+                    Vector4 pEntityMin = player.VehicleAABB.Min;
+                    Vector3 Top = player.Position + new Vector3(pEntityMax.X, pEntityMax.Y, pEntityMax.Z);
+                    Vector3 Btm = player.Position + new Vector3(pEntityMin.X, pEntityMin.Y, pEntityMin.Z);
+
+                    Vector2 BoxTop, BoxBtm;
+                    if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(Top, out BoxTop) || !ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(Btm, out BoxBtm))
+                        return;
+                    else if (BoxTop == new Vector2(0f, 0f) || BoxBtm == new Vector2(0f, 0f))
+                        return;
+
+                    float BoxMiddle = VehicleScreen.X;
+                    float Height = BoxBtm.Y - BoxTop.Y;
+                    float Width = Height / 4f;
+
+                    //   DrawBox((int)(VehicleScreen.X - Width), (int)VehicleScreen.Y, (int)(Height), (int)(-Height), VehColor);
+
+
+                    // Fov check
+                    fov = Math.Abs((screenMiddle - VehicleScreen).Length());
+
+                    if (fov < ExternalSharp.Cheat.Globals.cfg.AimFov)
+                    {
+                        if (minFov == 0f || minFov > fov)
+                        {
+                            minFov = fov;
+                            targetPosition = new Vector2((VehicleScreen.X - Width), (int)(VehicleScreen.Y - (Height / 2)));
+                        }
+                    }
+                }
+
+                return;
+            }
+            else
+            {
+                // GetDistance
+                float distance = ExternalSharp.Cheat.Globals.GameSDK.GetDistance(local.Position, player.Position);
+
+                // CheckDistance
+                if (ExternalSharp.Cheat.Globals.cfg.Aim_MaxDistance < distance)
+                    return;
+
+                // GetBone Position
+                Vector2 screenPosition = new Vector2(0f, 0f);
+
+                // ToDo : Prediction
+
+                if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(player.GetBone(aimBone), out screenPosition))
+                    return;
+
+                // Fov check
+                fov = Math.Abs((screenMiddle - screenPosition).Length());
+
+                if (fov < ExternalSharp.Cheat.Globals.cfg.AimFov)
+                {
+                    switch (ExternalSharp.Cheat.Globals.cfg.AimType)
+                    {
+                        case 0:
+                            if (minFov == 0f || minFov > fov)
+                            {
+                                minFov = fov;
+                                targetPosition = screenPosition;
+                            }
+                            break;
+                        case 1:
+                            if (minDistance == 0f || minDistance > distance)
+                            {
+                                minDistance = distance;
+                                targetPosition = screenPosition;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
+            if (targetPosition != new Vector2(0f, 0f))
+            {
+
+                int deltaX = (int)((screenMiddle.X - targetPosition.X) / ExternalSharp.Cheat.Globals.cfg.Smooth);
+                int deltaY = (int)((screenMiddle.Y - targetPosition.Y) / ExternalSharp.Cheat.Globals.cfg.Smooth);
+
+                Utils.WinAPI.MoveMouse(-deltaX, -deltaY);
+            }
+
+        }
 
         public void RenderESP()
         {
 
             Player pEntity = new Player(ExternalSharp.Cheat.Globals.Memory);
             Player pLocal = new Player(ExternalSharp.Cheat.Globals.Memory);
-           
+
             // Context
             long ClientGameContext = ExternalSharp.Cheat.Globals.Memory.Read<long>((IntPtr)offset.ClientgameContext);
             long PlayerManager = ExternalSharp.Cheat.Globals.Memory.Read<long>((IntPtr)(ClientGameContext + offset.PlayerManager));
@@ -359,10 +610,11 @@ namespace ExternalSharp.Cheat
 
             NameList.Clear();
 
+
             // ESP Loop
             for (int i = 0; i < 72; i++)
             {
-                
+
                 // LocalPlayer Check
                 if (pLocal.IsDead() && !pLocal.InVehicle())
                     break;
@@ -379,41 +631,42 @@ namespace ExternalSharp.Cheat
                     NameList.Add(pEntity.Name);
                     continue;
                 }
-                  
+
 
                 // Invalid Player
                 if (pEntity.ClientPlayer == 0)
                 {
                     continue;
                 }
-                else if (pEntity.ClientPlayer == pLocal.ClientPlayer) {
+                else if (pEntity.ClientPlayer == pLocal.ClientPlayer)
+                {
                     continue;
                 }
                 else if (pEntity.ClientVehicle == pLocal.ClientVehicle && pLocal.ClientVehicle != 0 && pEntity.ClientVehicle != 0)
                 {
                     continue;
                 }
-                  
+
 
                 // GetDistance
                 float distance = ExternalSharp.Cheat.Globals.GameSDK.GetDistance(pLocal.Position, pEntity.Position);
-              
+
                 // Check ESP MaxDistance
                 if (ExternalSharp.Cheat.Globals.cfg.ESP_MaxDistance < distance)
                     continue;
 
-                 // Vehicle ESP
+                // Vehicle ESP
                 if (ExternalSharp.Cheat.Globals.cfg.VehicleESP && pEntity.InVehicle())
                 {
 
                     if (!ExternalSharp.Cheat.Globals.cfg.TeamESP && pEntity.Team == pLocal.Team)
                         continue;
 
-                  RawColorBGRA VehColor =  pEntity.Team == pLocal.Team ? Utils.Extensions.ToSharpDXColor(ESP_VehTeam) : Utils.Extensions.ToSharpDXColor(ESP_VehNormal);
+                    RawColorBGRA VehColor = pEntity.Team == pLocal.Team ? Utils.Extensions.ToSharpDXColor(ESP_VehTeam) : Utils.Extensions.ToSharpDXColor(ESP_VehNormal);
 
                     // Matrix Object Bug :(
                     // DrawAABB(pEntity.VehicleAABB, pEntity.VehicleTranfsorm, SharpDX.Color.Red);
-                  
+
                     if (ExternalSharp.Cheat.Globals.cfg.ESP_Distance)
                     {
                         // float to Text
@@ -430,7 +683,7 @@ namespace ExternalSharp.Cheat
 
                         if (VehicleScreen != new Vector2(0f, 0f))
                         {
-                           
+
                             Vector4 pEntityMax = pEntity.VehicleAABB.Max;
                             Vector4 pEntityMin = pEntity.VehicleAABB.Min;
                             Vector3 Top = pEntity.Position + new Vector3(pEntityMax.X, pEntityMax.Y, pEntityMax.Z);
@@ -465,10 +718,12 @@ namespace ExternalSharp.Cheat
                     continue;
                 else if (!ExternalSharp.Cheat.Globals.cfg.TeamESP && pEntity.Team == pLocal.Team)
                     continue;
-                
+
+
+
                 // WorldToScreen
                 Vector2 ScreenPosition = new Vector2(0f, 0f);
-                if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(pEntity.Position,out ScreenPosition))
+                if (!ExternalSharp.Cheat.Globals.GameSDK.WorldToScreen(pEntity.Position, out ScreenPosition))
                     continue;
 
 
@@ -507,18 +762,27 @@ namespace ExternalSharp.Cheat
                     {
                         //string DebugText = "X: " + ((int)(ScreenPosition.X - Width)).ToString() + Environment.NewLine + " Y: " + ((int)ScreenPosition.Y).ToString() + Environment.NewLine + Environment.NewLine + "Size: " + Environment.NewLine + "Width : " + (int)(Height / 2f) + Environment.NewLine + "Height : " + (int)-Height;
                         //String(new ImVec2() { X = (int)(ScreenPosition.X - Width), Y = (int)ScreenPosition.Y }, new ImColor() { Value = new ImVec4 { W = 1f, X = 1f, Y = 1f, Z = 1f } }, DebugText);
-                    
+
                         // Filled
                         if (ExternalSharp.Cheat.Globals.cfg.ESP_BoxFilled)
                         {
                             DrawFilledBox((int)(ScreenPosition.X - Width), (int)ScreenPosition.Y, (int)(Height / 2f), (int)-Height, color, Utils.Extensions.ToSharpDXColor(ESP_Filled));
-                        } 
+                        }
                         else
                         {
-                            DrawBox((int)(ScreenPosition.X - Width), (int)ScreenPosition.Y, (int)(Height / 2f), (int)-Height, color);
+                            if (Globals.cfg.ESP_BoxType == 0) {
+                                DrawBox((int)(ScreenPosition.X - Width), (int)ScreenPosition.Y, (int)(Height / 2f), (int)-Height, color);
+                            }
+                            else
+                            {
+                                DrawBoxwithoutSides((int)(ScreenPosition.X - Width), (int)ScreenPosition.Y, (int)(Height / 2f), (int)-Height, color);
+                            }
                         }
 
                     }
+
+                    if (Globals.cfg.AimBot) { AimBotTarget(pEntity); }
+                
 
                     // Line
                     if (ExternalSharp.Cheat.Globals.cfg.ESP_Line)
@@ -550,7 +814,7 @@ namespace ExternalSharp.Cheat
                                 else if (Out1 == new Vector2(0f, 0f) || Out2 == new Vector2(0f, 0f))
                                     continue;
 
-                                DrawLine(new ImVec2() { X = Out1.X, Y = Out1.Y }, new ImVec2() { X = Out2.X, Y= Out2.Y }, ExternalSharp.Cheat.Globals.cfg.ESP_SkeletonColor == 0 ? color : Utils.Extensions.ToSharpDXColor(ESP_Skeleton), 1);
+                                DrawLine(new ImVec2() { X = Out1.X, Y = Out1.Y }, new ImVec2() { X = Out2.X, Y = Out2.Y }, ExternalSharp.Cheat.Globals.cfg.ESP_SkeletonColor == 0 ? color : Utils.Extensions.ToSharpDXColor(ESP_Skeleton), 1);
                             }
                         }
                     }
@@ -575,25 +839,25 @@ namespace ExternalSharp.Cheat
                     if (ExternalSharp.Cheat.Globals.cfg.ESP_Name)
                     {
                         string pName = pEntity.Name;
-                       // ExternalSharp.Cheat.Globals.Memory.ReadString((IntPtr)(pEntity.ClientPlayer + offset.PlayerName), out pName, 128);
+                        // ExternalSharp.Cheat.Globals.Memory.ReadString((IntPtr)(pEntity.ClientPlayer + offset.PlayerName), out pName, 128);
 
                         //pName = CleanString(pName);
-                      
+
                         ImVec2 textSize = new ImVec2();
                         ImGui.CalcTextSize(textSize, pName, null, false, -1.0f);
 
-                        string invalidCharacters = "&♂%Èß@╬à?4B☺^Ü>Ðß@╬à?4B☺^Øß@╬?´4B☺0Ã?╬??♣☻♦?t¢½!X¼^ÎÄ?╬??♣`¼^Î►Å?╬??♦ ╬h¼^Îÿÿÿÿªªªª↕à€♀♣♦♥♠♦♥♥♦☻☺☻♦♦♣♣♣♥☻☻☻☻☺♥☻♥☺☻☻☻☻☺☼☼þø☼ø♥øøøø☼ø☼ø☼ø☼ø▼øø☼ø☺ø☼ø♥øø☼ø▼ø☺ø☼øø♥ü♥☺ø♥ø▼øøø☼ø☼øü♥øøø☺øð♥ø♥þø☼ø♥ðþ☺ü☼ø☼ø☺ø☼øþ♥ø☼ø☼ðøø▼ø♥øø♥ø☼ø☼øø";
-                       
-                        if (!IsStringCorrupted(pName, invalidCharacters))
-                        {
-                          
+                        //string invalidCharacters = "&♂%Èß@╬à?4B☺^Ü>Ðß@╬à?4B☺^Øß@╬?´4B☺0Ã?╬??♣☻♦?t¢½!X¼^ÎÄ?╬??♣`¼^Î►Å?╬??♦ ╬h¼^Îÿÿÿÿªªªª↕à€♀♣♦♥♠♦♥♥♦☻☺☻♦♦♣♣♣♥☻☻☻☻☺♥☻♥☺☻☻☻☻☺☼☼þø☼ø♥øøøø☼ø☼ø☼ø☼ø▼øø☼ø☺ø☼ø♥øø☼ø▼ø☺ø☼øø♥ü♥☺ø♥ø▼øøø☼ø☼øü♥øøø☺øð♥ø♥þø☼ø♥ðþ☺ü☼ø☼ø☺ø☼øþ♥ø☼ø☼ðøø▼ø♥øø♥ø☼ø☼øø";
+
+                        //if (!IsStringCorrupted(pName, invalidCharacters))
+                        //{
+
                             String(new ImVec2() { X = BoxTop.X - (textSize.X / 2f), Y = (BoxTop.Y - textSize.Y) - 2f }, System.Drawing.Color.White, pName);
 
-                        }
+                        //}
 
                     }
 
-                    
+
                 }
 
             }
@@ -714,10 +978,10 @@ namespace ExternalSharp.Cheat
         }
 
        
-        string[] FramerateList = { "<30", "=<40", ">45", "Unlocked" };
+        string[] FramerateList = { "Normal", "AboveNormal", "High", "RealTime" };
 
         // Menu String
-        string[] BoxList = { "2D Box", "2D Corner Box" };
+        string[] BoxList = { "2D Box", "2D Box without sides" };
         string[] BoneList = { "Head", "Spine" };
         string[] bAimTupeText = { "Crosshair", "Distance" };
         string[] SkeletonColorModeList = { "ESP", "User" };
@@ -740,13 +1004,11 @@ namespace ExternalSharp.Cheat
         }
 
         public List<string> MSAA = new List<string>();
+        private string FPSlimit = string.Empty;
 
         public void RenderMenu()
         {
-            bool AimbotOpen = true;
-            bool VisualOpen = true;
-            bool MiscOpen = true;
-            bool DeveloperOpen = true;
+            if (string.IsNullOrEmpty(FPSlimit) == true) { FPSlimit = Globals.cfg.FpsLimit.ToString(); }
 
             ImGui.SetNextWindowSize(new Utils.ImVec2(850, 500), 0);
             ImGui.Begin("ProjectLocker - Battlefield4 [ EXTERNAL ] | C# Port By Destroyer", ref Globals.cfg.ShowMenu, (int)ImGuiWindowFlags.NoResize | (int)ImGuiWindowFlags.NoCollapse);
@@ -767,7 +1029,7 @@ namespace ExternalSharp.Cheat
             ImGui.BeginChildStr("##SomeChild", SomeChildRegion, true, 0);
 
             ImGui.SetCursorPosY(SomeChildRegion.Y - 130f);
-
+           
 
             // Exit
             ImGui.Separator();
@@ -797,7 +1059,7 @@ namespace ExternalSharp.Cheat
             {
                 style.FramePadding = new Utils.ImVec2(40, 8);
              
-                if (ImGui.BeginTabItem("   AimBot   ", ref AimbotOpen, (int)ImGuiWindowFlags.NoTitleBar))
+                if (BeginTabItem("   AimBot   ",  (int)ImGuiTabBarFlags.NoCloseWithMiddleMouseButton))
                 {
                     /*---------------*/
                     style.FramePadding = FramePadding;
@@ -818,6 +1080,18 @@ namespace ExternalSharp.Cheat
                     ImGui.NewLine();
                     ImGui.Spacing();
 
+                    Utils.TextInputData Input = new Utils.TextInputData(256);
+                    bool InputRender = Input.Render("Hello World");
+                    string InputResult = Input.Text;
+                  
+                    ImGui.NewLine();
+                    ImGui.Spacing();
+
+                    ImGui.Text("  Result: " + InputResult);
+
+                    ImGui.NewLine();
+                    ImGui.Spacing();
+                    
                     ImGui.Text("  AimBot Config");
                     ImGui.Separator();
                     ImGui.Spacing();
@@ -905,7 +1179,7 @@ namespace ExternalSharp.Cheat
                 }
 
                 style.FramePadding = new Utils.ImVec2(40, 8);
-                if (ImGui.BeginTabItem("   Visual   ", ref VisualOpen, 0))
+                if (BeginTabItem("   Visual   ", (int)ImGuiTabBarFlags.NoCloseWithMiddleMouseButton))
                 {
                     /*---------------*/
                     style.FramePadding = FramePadding;
@@ -921,7 +1195,6 @@ namespace ExternalSharp.Cheat
                     ImGui.SliderFloat("Opacity " + string.Format("({0})", Math.Round(Globals.cfg.Opacity).ToString()), ref Globals.cfg.Opacity, 10f, 100f, "", 0);
 
 
-                    Debug.WriteLine(Globals.GOverlay.Opacity.ToString());
 
                     ImGui.NewLine();
                     ImGui.Spacing();
@@ -945,12 +1218,12 @@ namespace ExternalSharp.Cheat
                     ImGui.Checkbox("Check Spectator", ref ExternalSharp.Cheat.Globals.cfg.CheckSpectator);
                     ImGui.Checkbox("Box", ref Globals.cfg.ESP_Box);
                     ImGui.Checkbox("BoxFilled", ref Globals.cfg.ESP_BoxFilled);
+                    ImGui.Checkbox("Skeleton", ref Globals.cfg.ESP_Skeleton);
                     ImGui.Checkbox("Line", ref Globals.cfg.ESP_Line);
                     ImGui.Checkbox("Distance", ref Globals.cfg.ESP_Distance);
                     ImGui.Checkbox("Name", ref Globals.cfg.ESP_Name);
                     ImGui.Checkbox("HealthBar", ref Globals.cfg.ESP_HealthBar);
-
-                    ImGui.EndChild();
+                     ImGui.EndChild();
                     /*---------------*/
                     ImGui.SameLine(0, 5);
                     /*---------------*/
@@ -962,7 +1235,7 @@ namespace ExternalSharp.Cheat
                     ImGui.Separator();
                     ImGui.Spacing();
 
-                    ImGui.SliderFloat("Distance", ref Globals.cfg.ESP_MaxDistance, 25f, 2000f, "", 0);
+                    ImGui.SliderFloat("Distance (" + Math.Round( Globals.cfg.ESP_MaxDistance) + ")", ref Globals.cfg.ESP_MaxDistance, 5f, 2000f, "", 0);
                     ImGui.ComboStr_arr("Box Style", ref Globals.cfg.ESP_BoxType, BoxList, BoxList.Count(), BoxList.Count());
 
                     ImGui.NewLine();
@@ -992,7 +1265,7 @@ namespace ExternalSharp.Cheat
                 }
 
                 style.FramePadding = new Utils.ImVec2(40, 8);
-                if (ImGui.BeginTabItem("    Misc    ", ref MiscOpen, 0))
+                if (BeginTabItem("    Misc    ", (int)ImGuiTabBarFlags.NoCloseWithMiddleMouseButton))
                 {
                     /*---------------*/
                     style.FramePadding = FramePadding;
@@ -1005,6 +1278,7 @@ namespace ExternalSharp.Cheat
                     ImGui.Text("  System");
                     ImGui.Separator();
                     ImGui.Spacing();
+                    ImGui.Checkbox("UnlockAll", ref Globals.cfg.UnlockAll);
                     ImGui.Checkbox("StreamProof", ref Globals.cfg.StreamProof);
                     ImGui.Checkbox("SpectatorList", ref Globals.cfg.SpectList);
                     ImGui.Checkbox("Crosshair", ref Globals.cfg.Crosshair);
@@ -1016,16 +1290,38 @@ namespace ExternalSharp.Cheat
 
                     ImGui.Checkbox("Blur On Gui", ref Globals.cfg.BlurOnGUI);
 
-                    ImGui.Text("  Overlay Framerate");
+                    ImGui.NewLine();
+                    ImGui.Spacing();
+
+                    ImGui.Text("  Overlay Framerate : ");
                     ImGui.Separator();
                     ImGui.Spacing();
-                    ImGui.ComboStr_arr("oFramerate", ref Globals.cfg.FramerateType, FramerateList, FramerateList.Count(), FramerateList.Count());
-                    ImVec2 FramerateRegion = new ImVec2();
+
+                    Utils.TextInputData Input = new Utils.TextInputData(FPSlimit);
+                    bool InputRender = Input.Render();
+                    FPSlimit = Input.Text;
+
+                    ImGui.NewLine();
+
+                     ImVec2 FramerateRegion = new ImVec2();
                     ImGui.GetContentRegionAvail(FramerateRegion);
                     FramerateRegion.Y = 30f;
                     if (ImGui.Button("Apply", FramerateRegion))
-                        new Thread(() => { this.UpdateFramerate(); }).Start();
+                        new Thread(() => { this.UpdateFramerate(Regex.Match(FPSlimit, @"\d+").Value); }).Start();
 
+                    ImGui.NewLine();
+                    ImGui.Spacing();
+
+                    ImGui.Text("  Overlay priority : ");
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    ImGui.ComboStr_arr("Priority", ref Globals.cfg.PriorityType, FramerateList, FramerateList.Count(), FramerateList.Count());
+                    ImVec2 FramerateRegion2 = new ImVec2();
+                    ImGui.GetContentRegionAvail(FramerateRegion2);
+                    FramerateRegion2.Y = 30f;
+                    if (ImGui.Button("Apply", FramerateRegion2))
+                        new Thread(() => { this.UpdatePriority(); }).Start();
 
                     ImGui.EndChild();
                     /*---------------*/
@@ -1035,6 +1331,7 @@ namespace ExternalSharp.Cheat
                     ImGui.GetContentRegionAvail(RightMiscBaseAvail);
                     ImGui.BeginChildStr("##RightMiscBase", RightMiscBaseAvail, false,0);
 
+               
                     ImGui.Text("   SwayModify");
                     ImGui.Separator();
                     ImGui.Spacing();
@@ -1085,7 +1382,7 @@ namespace ExternalSharp.Cheat
                 }
 
                 style.FramePadding = new Utils.ImVec2(40, 8);
-                if (ImGui.BeginTabItem("Developer", ref DeveloperOpen, 0))
+                if (BeginTabItem("Developer", (int)ImGuiTabBarFlags.NoCloseWithMiddleMouseButton))
                 {
                     /*---------------*/
                     style.FramePadding = FramePadding;
@@ -1189,14 +1486,21 @@ namespace ExternalSharp.Cheat
         }
 
 
-        public SharpDX.Direct3D9.PresentParameters presentParams = new SharpDX.Direct3D9.PresentParameters()
+        public SharpDX.Direct3D9.PresentParameters presentParams = new PresentParameters
         {
             Windowed = true,
-            SwapEffect = SharpDX.Direct3D9.SwapEffect.Discard,
-            BackBufferFormat = SharpDX.Direct3D9.Format.A8R8G8B8,
-            MultiSampleType = SharpDX.Direct3D9.MultisampleType.None,
-            MultiSampleQuality = 0
+            SwapEffect = SwapEffect.Discard,
+            BackBufferFormat = Format.A8R8G8B8,
+            PresentationInterval = PresentInterval.Immediate
         };
+        //new SharpDX.Direct3D9.PresentParameters()
+        //{
+        //    Windowed = true,
+        //    SwapEffect = SharpDX.Direct3D9.SwapEffect.Discard,
+        //    BackBufferFormat = SharpDX.Direct3D9.Format.A8R8G8B8,
+        //    MultiSampleType = SharpDX.Direct3D9.MultisampleType.None,
+        //    MultiSampleQuality = 0
+        //};
 
         bool RuntimeMSAA = false;
         public void UpdateMSAA(int Level)
@@ -1210,7 +1514,7 @@ namespace ExternalSharp.Cheat
                     {
                         presentParams.MultiSampleQuality = 0;
                         presentParams.MultiSampleType = (MultisampleType)0;
-                        Globals.GOverlay.Reset();
+                        Globals.GOverlay.ResetDevice();
                     }
                     else
                     {
@@ -1218,7 +1522,7 @@ namespace ExternalSharp.Cheat
                         int MSAA_Level = int.Parse(Content);
                         presentParams.MultiSampleQuality = MSAA_Level;
                         presentParams.MultiSampleType = (MultisampleType)MSAA_Level;
-                        Globals.GOverlay.Reset();
+                        Globals.GOverlay.ResetDevice();
 
                       if(Program.FreeCMD == false)
                         Console.WriteLine("Current MSAA Level : x" + Content);
@@ -1234,23 +1538,39 @@ namespace ExternalSharp.Cheat
            
         }
 
-        public void UpdateFramerate()
+        public void UpdateFramerate(string limit)
         {
             try
             {
-                if (Globals.cfg.FramerateType == 0)
+               
+                if (string.IsNullOrEmpty(limit) == false && Globals.GOverlay != null) { Globals.GOverlay.FPSlimit = int.Parse(limit);  }
+                 
+            }
+            catch (Exception ex)
+            {
+                if (Program.FreeCMD == false)
+                    Console.WriteLine("Framerate Error: " + ex.Message);
+            }
+           
+        }
+
+        public void UpdatePriority()
+        {
+            try
+            { 
+                if (Globals.cfg.PriorityType == 0)
                 {
-                    Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
+                    Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
                 }
-                else if (Globals.cfg.FramerateType == 1)
+                else if (Globals.cfg.PriorityType == 1)
                 {
                     Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.AboveNormal;
                 }
-                else if (Globals.cfg.FramerateType == 2)
+                else if (Globals.cfg.PriorityType == 2)
                 {
                     Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
                 }
-                else if (Globals.cfg.FramerateType == 3)
+                else if (Globals.cfg.PriorityType == 3)
                 {
                     Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime;
                 }
@@ -1260,7 +1580,7 @@ namespace ExternalSharp.Cheat
                 if (Program.FreeCMD == false)
                     Console.WriteLine("Framerate Error: " + ex.Message);
             }
-           
+
         }
 
         public bool SetBPS(int value)
@@ -1279,6 +1599,12 @@ namespace ExternalSharp.Cheat
             ExternalSharp.Cheat.Globals.Memory.Write<int>((IntPtr)(FiringFunctionData + 0xD8), value);
 
             return true;
+        }
+
+        public unsafe static bool BeginTabItem(string label, int flags)
+        {
+            bool* p_open2 = null;
+            return ImGui.__Internal.BeginTabItem(label, p_open2, flags);
         }
 
     }

@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{EDD942C3-39D6-4269-ADE2-457584E6257A}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ExternalSharp</RootNamespace>
-    <AssemblyName>ExternalSharp</AssemblyName>
+    <RootNamespace>bf4_Extrasensory</RootNamespace>
+    <AssemblyName>bf4_Extrasensory</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -69,7 +69,7 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
-    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>false</Optimize>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
@@ -87,14 +87,15 @@
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EasyImGui, Version=1.0.4.1, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\EasyImGui.1.0.4.1\lib\net48\EasyImGui.dll</HintPath>
+    <Reference Include="EasyImGui, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\EasyImGui.1.0.5.1\lib\net48\EasyImGui.dll</HintPath>
     </Reference>
-    <Reference Include="RenderSpy, Version=1.7.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RenderSpy.1.7.3\lib\net46\RenderSpy.dll</HintPath>
+    <Reference Include="RenderSpy, Version=1.7.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\Visual Studio 2022\Projects\RenderSpy\RenderSpy\bin\Debug\ILMerge\RenderSpy.dll</HintPath>
     </Reference>
-    <Reference Include="RenderSpy.ImGui, Version=1.0.3.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\RenderSpy.ImGui.1.0.3\lib\net48\RenderSpy.ImGui.dll</HintPath>
+    <Reference Include="RenderSpy.ImGui, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RenderSpy.ImGui.1.0.4\lib\net48\RenderSpy.ImGui.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -111,8 +112,12 @@
     <Reference Include="Themer">
       <HintPath>..\Lib\Themer.dll</HintPath>
     </Reference>
+    <Reference Include="Xylon.PH">
+      <HintPath>..\Lib\Xylon.PH.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Cheat\CustomVertex.cs" />
     <Compile Include="Cheat\Features.cs" />
     <Compile Include="Cheat\Globals.cs" />
     <Compile Include="Cheat\Render.cs" />
@@ -124,6 +129,7 @@
     <Compile Include="Utils\DarkTheme.cs" />
     <Compile Include="Utils\Extensions.cs" />
     <Compile Include="Utils\Memory.cs" />
+    <Compile Include="Utils\TextInputData.cs" />
     <Compile Include="Utils\WinAPI.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

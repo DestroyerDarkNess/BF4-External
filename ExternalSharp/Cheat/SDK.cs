@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProcessHacker.Native.Api;
+using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -13,27 +14,46 @@ namespace ExternalSharp.Cheat
             Memory = mem;
         }
 
-        public int ScreenWidth = 0;
-        public int ScreenHeight = 0;
-        public SharpDX.Matrix view_x_projection = new SharpDX.Matrix();
+        // Propiedades de solo lectura para evitar modificaciones externas
+        public int ScreenWidth { get; private set; }
+        public int ScreenHeight { get; private set; }
+        public SharpDX. Matrix ViewProjection { get; private set; }
 
+        /// <summary>
+        /// Actualiza los datos necesarios para la conversión de coordenadas del mundo a pantalla.
+        /// </summary>
+        /// <returns>True si la actualización fue exitosa; de lo contrario, false.</returns>
         public bool UpdateW2SData()
         {
-            long GameRenderer = Memory.Read<long>((IntPtr)offset.GameRenderer);
-            long RenderView = Memory.Read<long>((IntPtr)(GameRenderer + 0x60));
-
-            if (RenderView == 0)
+            // Leer el puntero a GameRenderer
+            IntPtr gameRendererPtr = (IntPtr)Memory.Read<long>((IntPtr)offset.GameRenderer);
+            if (gameRendererPtr == IntPtr.Zero)
                 return false;
 
-            long DXRenderer = Memory.Read<long>((IntPtr)offset.DxRenderer);
-            long m_pScreen = Memory.Read<long>((IntPtr)(DXRenderer + 0x38));
+            // Leer el puntero a RenderView desde GameRenderer + 0x60
+            IntPtr renderViewPtr = IntPtr.Add(gameRendererPtr, 0x60);
+            long renderView = Memory.Read<long>(renderViewPtr);
+            if (renderView == 0)
+                return false;
 
+            // Leer el puntero a DXRenderer
+            IntPtr dxRendererPtr = (IntPtr)Memory.Read<ulong>((IntPtr)offset.DxRenderer);
+            if (dxRendererPtr == IntPtr.Zero)
+                return false;
+
+            // Leer el puntero a m_pScreen desde DXRenderer + 0x38
+            IntPtr screenDataPtr = IntPtr.Add(dxRendererPtr, 0x38);
+            long m_pScreen = Memory.Read<long>(screenDataPtr);
             if (m_pScreen == 0)
                 return false;
 
-            view_x_projection = Memory.Read<SharpDX.Matrix>((IntPtr)(RenderView + 0x420));
-            ScreenWidth = Memory.Read<int>((IntPtr)(m_pScreen + 0x58));
-            ScreenHeight = Memory.Read<int>((IntPtr)(m_pScreen + 0x5C));
+            // Leer la matriz ViewProjection desde RenderView + 0x420
+            IntPtr viewProjectionPtr = IntPtr.Add((IntPtr)renderView, 0x420);
+            ViewProjection = Memory.Read< SharpDX. Matrix>(viewProjectionPtr);
+
+            // Leer las dimensiones de la pantalla desde m_pScreen + 0x58 y m_pScreen + 0x5C
+            ScreenWidth = Memory.Read<int>(IntPtr.Add((IntPtr)m_pScreen, 0x58));
+            ScreenHeight = Memory.Read<int>(IntPtr.Add((IntPtr)m_pScreen, 0x5C));
 
             return true;
         }
@@ -48,97 +68,112 @@ namespace ExternalSharp.Cheat
             return (float)Math.Sqrt(num * num + num2 * num2 + num3 * num3);
         }
 
-        public bool WorldToScreen(Vector3 WorldPos, out Vector2 ScreenPos)
+        public bool WorldToScreen(Vector3 worldPosEx, out Vector2 screenPos)
         {
-            long GameRenderer = Memory.Read<long>((IntPtr)offset.GameRenderer);
-            long RenderView = Memory.Read<long>((IntPtr)(GameRenderer + 0x60));
-          
-            if (RenderView == 0)
+            // Convertir System.Numerics.Vector3 a SharpDX.Vector3
+            SharpDX.Vector3 worldPos = new SharpDX.Vector3(worldPosEx.X, worldPosEx.Y, worldPosEx.Z);
+
+            // Leer datos necesarios una vez
+            long gameRenderer = Memory.Read<long>((IntPtr)offset.GameRenderer);
+            long renderView = Memory.Read<long>((IntPtr)(gameRenderer + 0x60));
+
+            if (renderView == 0)
             {
-                ScreenPos = Vector2.Zero;
+                screenPos = Vector2.Zero;
                 return false;
             }
 
-            ulong DXRenderer = Memory.Read<ulong>((IntPtr)offset.DxRenderer);
-            ulong m_pScreen = Memory.Read<ulong>((IntPtr)(DXRenderer + 0x38));
+            ulong dxRenderer = Memory.Read<ulong>((IntPtr)offset.DxRenderer);
+            ulong screenData = Memory.Read<ulong>((IntPtr)(dxRenderer + 0x38));
+
+            if (screenData == 0)
+            {
+                screenPos = Vector2.Zero;
+                return false;
+            }
+
+            // Leer la matriz de proyección y dimensiones de pantalla
+            SharpDX.Matrix viewProjection = Memory.Read<SharpDX.Matrix>((IntPtr)(renderView + 0x420));
+            int screenWidth = Memory.Read<int>((IntPtr)(screenData + 0x58));
+            int screenHeight = Memory.Read<int>((IntPtr)(screenData + 0x5C));
+
+            // Transformar posición del mundo a coordenadas de recorte
+            SharpDX.Vector4 clipCoords = SharpDX.Vector4.Transform(new SharpDX.Vector4(worldPos, 1.0f), viewProjection);
+
+            // Verificar si el objeto está detrás de la cámara
+            if (clipCoords.W < 0.65f)
+            {
+                screenPos = Vector2.Zero;
+                return false;
+            }
+
+            // Convertir a Coordenadas Normalizadas del Dispositivo (NDC)
+            SharpDX.Vector3 ndc;
+            ndc.X = clipCoords.X / clipCoords.W;
+            ndc.Y = clipCoords.Y / clipCoords.W;
+            ndc.Z = clipCoords.Z / clipCoords.W;
+
+            // Convertir de NDC a coordenadas de pantalla en 2D
+            screenPos.X = (ndc.X + 1.0f) * 0.5f * screenWidth;
+            screenPos.Y = (1.0f - ndc.Y) * 0.5f * screenHeight;
+
+            return true;
+        }
+
+
+        public bool WorldToScreen(Vector3 worldPosEx, out Vector3 screenPos)
+        {
+
+            SharpDX.Vector3 worldPos = new SharpDX.Vector3(worldPosEx.X, worldPosEx.Y, worldPosEx.Z);
            
-            if (m_pScreen == 0)
-            {
-                ScreenPos = Vector2.Zero;
-                return false;
-            }
+            // Leer datos necesarios una vez
+            long gameRenderer = Memory.Read<long>((IntPtr)(offset.GameRenderer));
+            long renderView = Memory.Read<long>((IntPtr)(gameRenderer + 0x60));
 
-            SharpDX.Matrix view_x_projection = Memory.Read<SharpDX.Matrix>((IntPtr)(RenderView + 0x420));
-
-            int ScreenWidth = Memory.Read<int>((IntPtr)(m_pScreen + 0x58));
-            int ScreenHeight = Memory.Read<int>((IntPtr)(m_pScreen + 0x5C));
-
-            float cX = ScreenWidth * 0.5f;
-            float cY = ScreenHeight * 0.5f;
-
-            float w = view_x_projection[0, 3] * WorldPos.X + view_x_projection[1, 3] * WorldPos.Y + view_x_projection[2, 3] * WorldPos.Z + view_x_projection[3, 3];
-          
-            if (w < 0.65f)
-            {
-                ScreenPos = Vector2.Zero;
-                return false;
-            }
-          
-            float x = view_x_projection[0, 0] * WorldPos.X + view_x_projection[1, 0] * WorldPos.Y + view_x_projection[2, 0] * WorldPos.Z + view_x_projection[3, 0];
-            float y = view_x_projection[0, 1] * WorldPos.X + view_x_projection[1, 1] * WorldPos.Y + view_x_projection[2, 1] * WorldPos.Z + view_x_projection[3, 1];
-
-            ScreenPos.X = cX + cX * x / w;
-            ScreenPos.Y = cY - cY * y / w;
-
-            return true;
-        }
-
-
-        public bool WorldToScreen(Vector3 worldPos, out Vector3 screenPos)
-        {
-            long GameRenderer = Memory.Read<long>((IntPtr)(offset.GameRenderer));
-            long RenderView = Memory.Read<long>((IntPtr)(GameRenderer + 0x60));
-
-            if (RenderView == 0)
+            if (renderView == 0)
             {
                 screenPos = Vector3.Zero;
                 return false;
             }
 
-            long DXRenderer = Memory.Read<long>((IntPtr)(offset.DxRenderer));
-            long m_pScreen = Memory.Read<long>((IntPtr)(DXRenderer + 0x38));
+            long dxRenderer = Memory.Read<long>((IntPtr)(offset.DxRenderer));
+            long screenData = Memory.Read<long>((IntPtr)(dxRenderer + 0x38));
 
-            if (m_pScreen == 0)
+            if (screenData == 0)
             {
                 screenPos = Vector3.Zero;
                 return false;
             }
 
-            SharpDX.Matrix view_x_projection = Memory.Read<SharpDX.Matrix>((IntPtr)(RenderView + 0x420));
+            // Leer matriz y dimensiones de pantalla
+            SharpDX.Matrix viewProjection = Memory.Read<SharpDX.Matrix>((IntPtr)(renderView + 0x420));
+            int screenWidth = Memory.Read<int>((IntPtr)(screenData + 0x58));
+            int screenHeight = Memory.Read<int>((IntPtr)(screenData + 0x5C));
 
-            int ScreenWidth = Memory.Read<int>((IntPtr)(m_pScreen + 0x58));
-            int ScreenHeight = Memory.Read<int>((IntPtr)(m_pScreen + 0x5C));
+            // Transformar posición del mundo a coordenadas de recorte
+            SharpDX.Vector4 clipCoords = SharpDX.Vector4.Transform(new SharpDX.Vector4(worldPos, 1.0f), viewProjection);
 
-            float cX = ScreenWidth * 0.5f;
-            float cY = ScreenHeight * 0.5f;
-
-            float w = view_x_projection.M41 * worldPos.X + view_x_projection.M42 * worldPos.Y + view_x_projection.M43 * worldPos.Z + view_x_projection.M44;
-
-            if (w < 0.65f)
+            // Verificar si el objeto está detrás de la cámara
+            if (clipCoords.W < 0.65f)
             {
-                screenPos = new Vector3(0, 0, w);
+                screenPos = new Vector3(0, 0, clipCoords.W);
                 return false;
             }
 
-            float x = view_x_projection.M11 * worldPos.X + view_x_projection.M12 * worldPos.Y + view_x_projection.M13 * worldPos.Z + view_x_projection.M14;
-            float y = view_x_projection.M21 * worldPos.X + view_x_projection.M22 * worldPos.Y + view_x_projection.M23 * worldPos.Z + view_x_projection.M24;
+            // Convertir a Coordenadas Normalizadas del Dispositivo (NDC)
+            SharpDX.Vector3 ndc;
+            ndc.X = clipCoords.X / clipCoords.W;
+            ndc.Y = clipCoords.Y / clipCoords.W;
+            ndc.Z = clipCoords.Z / clipCoords.W;
 
-            screenPos.X = cX + cX * x / w;
-            screenPos.Y = cY - cY * y / w;
-            screenPos.Z = w;
+            // Convertir de NDC a coordenadas de pantalla
+            screenPos.X = (ndc.X + 1.0f) * 0.5f * screenWidth;
+            screenPos.Y = (1.0f - ndc.Y) * 0.5f * screenHeight;
+            screenPos.Z = clipCoords.W;
 
             return true;
         }
+
     }
 
     public enum VehicleType
@@ -323,7 +358,7 @@ namespace ExternalSharp.Cheat
         public const long ClientVehicle = 0x14C0;
 
         public const long PlayerTeam = 0x13CC;
-        public const long PlayerName = 0x1836;
+        public const long PlayerName = 0x40;
         public const long Occlude = 0x5B1;
         public const long Spectator = 0x13C9;
     }
@@ -403,7 +438,7 @@ namespace ExternalSharp.Cheat
         private string ReadPlayerName()
         {
             string pName = string.Empty;
-            Memory.ReadString((IntPtr)(ClientPlayer + offset.PlayerName), out pName, 128);
+            Memory.ReadString((IntPtr)(ClientPlayer + offset.PlayerName), out pName, 10);
             return pName;
         }
 
@@ -449,7 +484,7 @@ namespace ExternalSharp.Cheat
             }
 
             // Visible
-            Occlude = Memory.Read<bool>((IntPtr)(ClientSoldier + 0x5B1));
+            Occlude = Memory.Read<bool>((IntPtr)(ClientSoldier + 0x05B1));
             Pose = Memory.Read<int>((IntPtr)(ClientSoldier + 0x4F0));
             pQuat = GetQuat();
             Name = ReadPlayerName();

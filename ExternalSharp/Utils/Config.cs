@@ -52,6 +52,7 @@ namespace ExternalSharp.Utils
         public bool ESP_BoxFilled;
         public bool ESP_Line;
         public bool ESP_Distance;
+        public bool ESP_AimAssist;
         public bool ESP_Name;
         public bool ESP_HealthBar;
         public bool ESP_Skeleton;
@@ -68,7 +69,8 @@ namespace ExternalSharp.Utils
         // Overlay
         public float Opacity;
         public bool Framerate;
-        public int FramerateType;
+        public int FpsLimit;
+        public int PriorityType;
         public int MSAA_Level;
 
         // Misc
@@ -103,31 +105,32 @@ namespace ExternalSharp.Utils
             config.VehAim = true;
             config.AimBot = true;
             config.AimAtTeam = false;
-            config.VisCheck = true;
+            config.VisCheck = false;
             config.NoSway = true;
             config.AimTargetBone = 0;
             config.DrawFov = true;
             config.RainbowFov = true;
             config.FovFilled = true;
-            config.AimFov = 150f;
-            config.Smooth = 10;
+            config.AimFov = 50f;
+            config.Smooth = 1;
             config.Aim_MaxDistance = 150f;
-            config.AimType = 1;
+            config.AimType = 0;
             config.AimKeyType = 1;
 
             config.CheckSpectator = false;
             config.PlayerESP = true;
-            config.TeamESP = true;
+            config.TeamESP = false;
             config.VehicleESP = true;
             config.ESP_Box = true;
-            config.ESP_BoxFilled = true;
+            config.ESP_BoxFilled = false;
             config.ESP_Line = true;
             config.ESP_Distance = true;
+            config.ESP_AimAssist = false;
             config.ESP_Name = true;
             config.ESP_HealthBar = true;
-            config.ESP_Skeleton = true;
-            config.ESP_MaxDistance = 1000f;
-            config.ESP_BoxType = 1;
+            config.ESP_Skeleton = false;
+            config.ESP_MaxDistance = 200f;
+            config.ESP_BoxType = 0;
             config.ESP_SkeletonColor = 0;
 
             config.StreamProof = false;
@@ -136,11 +139,12 @@ namespace ExternalSharp.Utils
             config.RainbowRate = 25;
 
             config.Opacity = 57f;
-            config.FramerateType = 1;
+            config.FpsLimit = 30;
+            config.PriorityType = 1;
             config.MSAA_Level = 0;
 
-            config.UnlockAll = true;
-            config.SwayModify = true;
+            config.UnlockAll = false;
+            config.SwayModify = false;
             config.ModVal = 0.95f;
             config.DamageHack = false;
             config.ModBPS = 1;

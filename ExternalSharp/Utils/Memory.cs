@@ -1,7 +1,9 @@
 ﻿using EasyImGui.Core;
+using SharpDX.Direct3D9;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -17,21 +19,9 @@ namespace ExternalSharp.Utils
 
         public event OnMemoryReady OnMemReady = null;
 
-        private const int PROCESS_ALL_ACCESS = 0x1F0FFF;
-        private const int MAX_PATH = 260;
-
         public string targetWindowName = "Battlefield 4";
         public int PID;
-        public IntPtr pHandle;
-
-        [DllImport("kernel32.dll")]
-        private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, [Out] byte[] lpBuffer, int dwSize, out int lpNumberOfBytesRead);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern bool WriteProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer, int dwSize, out int lpNumberOfBytesWritten);
+        public ProcessHacker.Native.Objects.ProcessHandle  pHandle;
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern IntPtr FindWindowA(string lpClassName, string lpWindowName);
@@ -64,7 +54,7 @@ namespace ExternalSharp.Utils
                     OnMemReady?.Invoke(this, false);
                 } else {
                     PID = processId;
-                    pHandle = OpenProcess(PROCESS_ALL_ACCESS, false, PID);
+                    pHandle = new ProcessHacker.Native.Objects.ProcessHandle(processId, ProcessHacker.Native.Security.ProcessAccess.VmRead | ProcessHacker.Native.Security.ProcessAccess.VmWrite);
                     OnMemReady?.Invoke(this, true);
                 }
 
@@ -74,7 +64,7 @@ namespace ExternalSharp.Utils
             return true;
         }
 
-       public int OverlayPID = 0;
+        public int OverlayPID = 0;
 
         public void Init()
         {
@@ -82,33 +72,46 @@ namespace ExternalSharp.Utils
             EnumWindows(EnumWindowsCallback, IntPtr.Zero);
         }
 
-       
+        public void Init(int TargetID)
+        {
+            PID = TargetID;
+            pHandle = new ProcessHacker.Native.Objects.ProcessHandle(TargetID, ProcessHacker.Native.Security.ProcessAccess.VmRead | ProcessHacker.Native.Security.ProcessAccess.VmWrite);
+            OnMemReady?.Invoke(this, true);
+        }
 
         public T Read<T>(IntPtr address) where T : struct
         {
-            byte[] buffer = new byte[Marshal.SizeOf<T>()];
-            ReadProcessMemory(pHandle, address, buffer, buffer.Length, out _);
-            GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-            T value = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
-            handle.Free();
-            return value;
+            try {
+                byte[] buffer = pHandle.ReadMemory(address, Marshal.SizeOf<T>());
+                GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+                T value = (T)Marshal.PtrToStructure(handle.AddrOfPinnedObject(), typeof(T));
+                handle.Free();
+                return value;
+            } catch { return default; }
         }
 
-        public void Write<T>(IntPtr address, T value) where T : struct
+        public int Write<T>(IntPtr address, T value) where T : struct
         {
-            byte[] buffer = new byte[Marshal.SizeOf<T>()];
+            try
+            {
+            byte[] buffer =  new byte[Marshal.SizeOf<T>()];
             GCHandle handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
             Marshal.StructureToPtr(value, handle.AddrOfPinnedObject(), true);
             handle.Free();
-            WriteProcessMemory(pHandle, address, buffer, buffer.Length, out _);
+            return pHandle.WriteMemory(address, buffer);
+            }
+            catch { return default; }
         }
+
 
         public bool ReadString(IntPtr address, out string value, int size)
         {
-            byte[] buffer = new byte[size];
-            ReadProcessMemory(pHandle, address, buffer, buffer.Length, out _);
-            value = System.Text.Encoding.Default.GetString(buffer);
-            return !string.IsNullOrEmpty(value);
+            try {
+                byte[] buffer = pHandle.ReadMemory(address, size);
+                value = System.Text.Encoding.Default.GetString(buffer);
+                return !string.IsNullOrEmpty(value);
+            } catch { value = string.Empty; return false; }
+           
         }
     }
 
