@@ -40,6 +40,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <Prefer32Bit>false</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -90,9 +91,8 @@
     <Reference Include="EasyImGui, Version=1.0.5.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\EasyImGui.1.0.5.1\lib\net48\EasyImGui.dll</HintPath>
     </Reference>
-    <Reference Include="RenderSpy, Version=1.7.4.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\..\Visual Studio 2022\Projects\RenderSpy\RenderSpy\bin\Debug\ILMerge\RenderSpy.dll</HintPath>
+    <Reference Include="RenderSpy, Version=1.7.8.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\RenderSpy.1.7.8\lib\net46\RenderSpy.dll</HintPath>
     </Reference>
     <Reference Include="RenderSpy.ImGui, Version=1.0.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RenderSpy.ImGui.1.0.4\lib\net48\RenderSpy.ImGui.dll</HintPath>
