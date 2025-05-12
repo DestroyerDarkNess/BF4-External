@@ -2,6 +2,7 @@
 
 (100% Secure, 100% Anti-Recording Tested with all existing recording software, Write me on my discord: **Destroyer#8328**):  ![{03DF57E6-0B70-4339-91A3-338D2BAD701E}](https://github.com/user-attachments/assets/699b49d2-5885-4cf9-a25f-fb6c32633450)
 
+[![Discord Banner 2](https://discord.com/api/guilds/1327640073348317235/widget.png?style=banner2)](https://discord.gg/C4evgU4Tas)
 
 ![SS_EasyModern_BF4_2025-01-12_20-54-29](https://github.com/user-attachments/assets/574541e1-0bd0-4f12-b354-63994b67eba3)
 
